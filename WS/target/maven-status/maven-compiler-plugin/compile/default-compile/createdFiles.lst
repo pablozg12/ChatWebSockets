@@ -1,3 +1,4 @@
 org\itson\ws\JakartaRestConfiguration.class
+wSocket\MensajeDTO.class
 org\itson\ws\resources\JakartaEE10Resource.class
 wSocket\ChatServer.class
