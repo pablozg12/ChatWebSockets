@@ -1,18 +1,12 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package wSocket;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import jakarta.websocket.OnClose;
 import jakarta.websocket.OnMessage;
 import jakarta.websocket.OnOpen;
 import jakarta.websocket.Session;
 import jakarta.websocket.server.PathParam;
 import jakarta.websocket.server.ServerEndpoint;
-import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -28,43 +22,53 @@ public class ChatServer {
 
     @OnOpen
     public void onOpen(Session session, @PathParam("username") String username) {
+        // guarda el nombre de usuario en las propiedades de la sesión
+        session.getUserProperties().put("usuario", username);
         sessions.put(username, session);
-        broadcast();
+        MensajeDTO mensajeAviso = new MensajeDTO("servidor", "SYSTEM", username + " se ha unido al servidor.");
+
+        broadcast(gson.toJson(mensajeAviso), username);
     }
 
     @OnMessage
     public void onMessage(String message, Session session) {
-        JsonObject json = gson.fromJson(message, JsonObject.class);
-        String type = json.get("type").getAsString();
+        MensajeDTO mensaje = gson.fromJson(message, MensajeDTO.class);
 
-        if ("PUBLIC".equals(type)) {
-            enviarMensaje(message);
-        } else if ("PRIVATE".equals(type)) {
-            String to = json.get("to").getAsString();
+        if ("PUBLIC".equals(mensaje.getTipo())) {
+            broadcast(message, (String) session.getUserProperties().get("usuario"));
+            
+        } else if ("PRIVATE".equals(mensaje.getTipo())) {
+            
+            String to = mensaje.getDestinatario();
             enviarMensajeExclusivo(message, to);
-            try {
-                session.getBasicRemote().sendText(message);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            session.getAsyncRemote().sendText(message);
+
         }
     }
 
     @OnClose
     public void onClose(Session session) {
-        sessions.values().remove(session);
-        broadcast();
+        // obtener el nombre de usuario de la sesión que se desconectó
+        String usuarioDesconectado = (String) session.getUserProperties().get("usuario");
+
+        if (usuarioDesconectado != null) {
+            sessions.remove(usuarioDesconectado); // elimina por la llave
+            MensajeDTO mensajeAviso = new MensajeDTO("servidor", "SYSTEM", usuarioDesconectado + " ha abandonado el servidor.");
+            
+            broadcast(gson.toJson(mensajeAviso), usuarioDesconectado);
+        }
+
     }
 
-    private void broadcast() {
-        JsonObject listMsg = new JsonObject();
-        listMsg.addProperty("type", "USER_LIST");
-        listMsg.add("users", gson.toJsonTree(sessions.keySet()));
-        enviarMensaje(listMsg.toString());
-    }
+    private void broadcast(String msj, String user) {
+        // envía a todos los clientes menos al que envía el mensaje
+        for (Session s : sessions.values()) {
+            String sessionUser = (String) s.getUserProperties().get("usuario");
+            if (sessionUser != null && !sessionUser.equals(user)) {
+                s.getAsyncRemote().sendText(msj);
+            }
+        }
 
-    private void enviarMensaje(String msg) {
-        sessions.values().forEach(s -> s.getAsyncRemote().sendText(msg));
     }
 
     private void enviarMensajeExclusivo(String msg, String to) {
