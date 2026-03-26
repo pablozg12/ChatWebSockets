@@ -7,6 +7,7 @@ import jakarta.websocket.OnOpen;
 import jakarta.websocket.Session;
 import jakarta.websocket.server.PathParam;
 import jakarta.websocket.server.ServerEndpoint;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -66,8 +67,12 @@ public class ChatServer {
         // envía a todos los clientes menos al que envía el mensaje
         for (Session s : sessions.values()) {
             String sessionUser = (String) s.getUserProperties().get("usuario");
-            if (sessionUser != null && !sessionUser.equals(user)) {
-                s.getAsyncRemote().sendText(msj);
+            if (sessionUser != null && !sessionUser.equals(user) && s.isOpen()) {
+                try {
+                    s.getBasicRemote().sendText(msj);
+                } catch (IOException e) {
+                    System.out.println("Error enviando broadcast a " + sessionUser);
+                }
             }
         }
     }
@@ -85,7 +90,11 @@ public class ChatServer {
     private void enviarMensajeExclusivo(String msg, String to) {
         Session s = sessions.get(to);
         if (s != null && s.isOpen()) {
-            s.getAsyncRemote().sendText(msg);
+            try {
+            s.getBasicRemote().sendText(msg);
+        } catch (IOException e) {
+            System.out.println("Error enviando mensaje exclusivo a " + to);
+        }
         }
     }
 }
