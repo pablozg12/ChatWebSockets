@@ -4,15 +4,19 @@
  */
 package wSocket;
 
+import java.util.List;
+
 /**
  *
  * @author erika
  */
 public class MensajeDTO {
+
     private String remitente;
     private String destinatario;
     private String tipo;
     private String contenido;
+    private List<String> usuarios;
 
     public MensajeDTO() {
     }
@@ -32,15 +36,49 @@ public class MensajeDTO {
         this.contenido = contenido;
     }
 
-    public String getRemitente() { return remitente; }
-    public void setRemitente(String remitente) { this.remitente = remitente; }
+    public MensajeDTO(String tipo, List usuarios) {
+        this.tipo = tipo;
+        this.usuarios = usuarios;
+    }
 
-    public String getDestinatario() { return destinatario; }
-    public void setDestinatario(String destinatario) { this.destinatario = destinatario; }
+    public String getRemitente() {
+        return remitente;
+    }
 
-    public String getTipo() { return tipo; }
-    public void setTipo(String tipo) { this.tipo = tipo; }
+    public void setRemitente(String remitente) {
+        this.remitente = remitente;
+    }
 
-    public String getContenido() { return contenido; }
-    public void setContenido(String contenido) { this.contenido = contenido; }
+    public String getDestinatario() {
+        return destinatario;
+    }
+
+    public void setDestinatario(String destinatario) {
+        this.destinatario = destinatario;
+    }
+
+    public String getTipo() {
+        return tipo;
+    }
+
+    public void setTipo(String tipo) {
+        this.tipo = tipo;
+    }
+
+    public String getContenido() {
+        return contenido;
+    }
+
+    public void setContenido(String contenido) {
+        this.contenido = contenido;
+    }
+
+    public List<String> getUsuarios() {
+        return usuarios;
+    }
+
+    public void setUsuarios(List usuarios) {
+        this.usuarios = usuarios;
+    }
+    
 }

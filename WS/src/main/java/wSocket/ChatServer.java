@@ -7,6 +7,8 @@ import jakarta.websocket.OnOpen;
 import jakarta.websocket.Session;
 import jakarta.websocket.server.PathParam;
 import jakarta.websocket.server.ServerEndpoint;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -28,6 +30,7 @@ public class ChatServer {
         MensajeDTO mensajeAviso = new MensajeDTO("servidor", "SYSTEM", username + " se ha unido al servidor.");
 
         broadcast(gson.toJson(mensajeAviso), username);
+        enviarListaUsuarios();
     }
 
     @OnMessage
@@ -36,13 +39,12 @@ public class ChatServer {
 
         if ("PUBLIC".equals(mensaje.getTipo())) {
             broadcast(message, (String) session.getUserProperties().get("usuario"));
-            
+
         } else if ("PRIVATE".equals(mensaje.getTipo())) {
-            
+
             String to = mensaje.getDestinatario();
             enviarMensajeExclusivo(message, to);
-            session.getAsyncRemote().sendText(message);
-
+            session.getAsyncRemote();
         }
     }
 
@@ -54,10 +56,10 @@ public class ChatServer {
         if (usuarioDesconectado != null) {
             sessions.remove(usuarioDesconectado); // elimina por la llave
             MensajeDTO mensajeAviso = new MensajeDTO("servidor", "SYSTEM", usuarioDesconectado + " ha abandonado el servidor.");
-            
+
             broadcast(gson.toJson(mensajeAviso), usuarioDesconectado);
         }
-
+        enviarListaUsuarios();
     }
 
     private void broadcast(String msj, String user) {
@@ -68,7 +70,16 @@ public class ChatServer {
                 s.getAsyncRemote().sendText(msj);
             }
         }
+    }
 
+    private void enviarListaUsuarios() {
+        List<String> lista = new ArrayList<>(sessions.keySet());
+        MensajeDTO dto = new MensajeDTO("USERS", lista);
+        String json = gson.toJson(dto);
+
+        for (Session s : sessions.values()) {
+            s.getAsyncRemote().sendText(json);
+        }
     }
 
     private void enviarMensajeExclusivo(String msg, String to) {

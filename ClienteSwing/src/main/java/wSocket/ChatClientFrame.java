@@ -16,6 +16,7 @@ import jakarta.websocket.*;
 
 @ClientEndpoint
 public class ChatClientFrame extends JFrame {
+
     private Session session;
     private Gson gson = new Gson();
     private String miUsuario;
@@ -24,7 +25,8 @@ public class ChatClientFrame extends JFrame {
     private JTextArea txtChat = new JTextArea();
     private JTextField txtMensaje = new JTextField();
     private JComboBox<String> comboTipo = new JComboBox<>(new String[]{"PUBLIC", "PRIVATE"});
-    private JTextField txtDestino = new JTextField(10); // Para escribir a quie va el mensaje privado
+    private DefaultListModel<String> modeloUsuarios = new DefaultListModel<>();
+    private JList<String> listaUsuarios = new JList<>(modeloUsuarios);
 
     public ChatClientFrame(String username) {
         this.miUsuario = username;
@@ -43,22 +45,19 @@ public class ChatClientFrame extends JFrame {
         txtChat.setLineWrap(true);
         add(new JScrollPane(txtChat), BorderLayout.CENTER);
 
+        listaUsuarios.setBorder(BorderFactory.createTitledBorder("Usuarios conectados"));
+        add(new JScrollPane(listaUsuarios), BorderLayout.EAST);
+
         // Panel inferior para enviar mensajes
         JPanel panelInferior = new JPanel(new BorderLayout());
         panelInferior.add(comboTipo, BorderLayout.WEST);
         panelInferior.add(txtMensaje, BorderLayout.CENTER);
-        
+
         JButton btnEnviar = new JButton("Enviar");
         btnEnviar.addActionListener(e -> enviarMensaje());
         panelInferior.add(btnEnviar, BorderLayout.EAST);
         add(panelInferior, BorderLayout.SOUTH);
-        
-        // Panel superior para configurar mensajes privados
-        JPanel panelSuperior = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        panelSuperior.add(new JLabel("Si es privado, escribe el destinatario: "));
-        panelSuperior.add(txtDestino);
-        add(panelSuperior, BorderLayout.NORTH);
-        
+
         // Enviar con el enter je
         txtMensaje.addActionListener(e -> enviarMensaje());
     }
@@ -67,7 +66,7 @@ public class ChatClientFrame extends JFrame {
         try {
             WebSocketContainer container = ContainerProvider.getWebSocketContainer();
             // IMPORTANTE: Cambia "TuAppServidor" por el nombre real de tu proyecto de servidor (Context Path)
-            String uri = "ws://localhost:8080/WS/chat/" + miUsuario; 
+            String uri = "ws://localhost:8080/WS/chat/" + miUsuario;
             container.connectToServer(this, new URI(uri));
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Error al conectar: " + e.getMessage());
@@ -80,26 +79,45 @@ public class ChatClientFrame extends JFrame {
         MensajeDTO m = gson.fromJson(message, MensajeDTO.class);
 
         SwingUtilities.invokeLater(() -> {
-            if ("SYSTEM".equals(m.getTipo())) {
-                txtChat.append(">> " + m.getContenido() + "\n");
-            } else {
-                String prefijo = "PRIVATE".equals(m.getTipo()) ? "[Privado] " : "";
-                txtChat.append(prefijo + m.getRemitente() + ": " + m.getContenido() + "\n");
+            switch (m.getTipo()) {
+
+                case "SYSTEM":
+                    txtChat.append(">> " + m.getContenido() + "\n");
+                    break;
+
+                case "USERS":
+                    modeloUsuarios.clear();
+                    for (String u : m.getUsuarios()) {
+                        if (!u.equals(miUsuario)) {
+                            modeloUsuarios.addElement(u);
+                        }
+                    }
+                    break;
+
+                case "PRIVATE":
+                    txtChat.append("[Privado] " + m.getRemitente() + ": " + m.getContenido() + "\n");
+                    break;
+
+                case "PUBLIC":
+                    txtChat.append(m.getRemitente() + ": " + m.getContenido() + "\n");
+                    break;
             }
         });
     }
 
     private void enviarMensaje() {
         String contenido = txtMensaje.getText().trim();
-        if (contenido.isEmpty()) return;
+        if (contenido.isEmpty()) {
+            return;
+        }
 
         String tipo = (String) comboTipo.getSelectedItem();
         MensajeDTO msg;
 
         if ("PRIVATE".equals(tipo)) {
-            String destino = txtDestino.getText().trim();
-            if (destino.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Debes escribir un destinatario para el mensaje privado.");
+            String destino = listaUsuarios.getSelectedValue();
+            if (destino == null || destino.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Selecciona un usuario de la lista.");
                 return;
             }
             msg = new MensajeDTO(miUsuario, destino, tipo, contenido);
