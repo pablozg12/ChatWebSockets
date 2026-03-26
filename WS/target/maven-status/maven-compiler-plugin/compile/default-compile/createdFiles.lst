@@ -1,0 +1,3 @@
+org\itson\ws\JakartaRestConfiguration.class
+org\itson\ws\resources\JakartaEE10Resource.class
+wSocket\ChatServer.class
